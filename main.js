@@ -1,40 +1,40 @@
-const http = require('http')
-const querystring = require('querystring')
-const url = require('url')
+const http = require('http');
 
+// Create the HTTP server
 const server = http.createServer((req, res) => {
-  // TODO: Implement this function
-  const parsedUrl = url.parse(req.url, true)
-  const method = req.method
-  const path = parsedUrl.pathname
-  const query = parsedUrl.query
+  const { method, url, headers } = req;
 
-  let body = ''
+  if (method === 'GET' || method === 'POST') {
+    // Collect request details
+    let body = '';
 
-  req.on('data', (chunk) => {
-    body += chunk.toString()
-  })
+    // Handle data for POST requests
+    req.on('data', chunk => {
+      body += chunk;
+    });
 
-  req.on('data', () => {
-    const parsedBody = querystring.parse(body)
-    const responseObj = {
-      method,
-      path,
-      query,
-      body: parsedBody,
-    }
+    req.on('end', () => {
+      // Build the response JSON object
+      const response = {
+        method,
+        url,
+        headers,
+        body: body ? JSON.parse(body) : null,
+      };
 
-    if (method !== 'POST') {
-      delete responseObj.body
-    }
+      // Respond to the client
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(response, null, 2));
+    });
+  } else {
+    // Handle unsupported methods
+    res.writeHead(405, { 'Content-Type': 'text/plain' });
+    res.end('Method Not Allowed');
+  }
+});
 
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(responseObj))
-  })
-})
-
-server.listen(3000, () => {
-  console.log('Server is listening on port 3000')
-})
-
-module.exports = { server }
+// Start the server on port 3000
+const PORT = 3000;
+server.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
