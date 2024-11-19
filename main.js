@@ -1,40 +1,43 @@
 const http = require('http');
+const url = require('url');
+const querystring = require('querystring');
 
-// Create the HTTP server
 const server = http.createServer((req, res) => {
-  const { method, url, headers } = req;
+  const parsedUrl = url.parse(req.url, true);
+  const method = req.method;
+  const path = parsedUrl.pathname;
+  const query = parsedUrl.query;
 
-  if (method === 'GET' || method === 'POST') {
-    // Collect request details
-    let body = '';
+  let body = '';
+  req.on('data', chunk => {
+    body += chunk.toString();
+  });
 
-    // Handle data for POST requests
-    req.on('data', chunk => {
-      body += chunk;
-    });
+  req.on('end', () => {
+    const parsedBody = querystring.parse(body);
 
-    req.on('end', () => {
-      // Build the response JSON object
-      const response = {
-        method,
-        url,
-        headers,
-        body: body ? JSON.parse(body) : null,
-      };
+    const responseObj = {
+      method,
+      path,
+      query,
+      body: parsedBody,
+    };
 
-      // Respond to the client
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(response, null, 2));
-    });
-  } else {
-    // Handle unsupported methods
-    res.writeHead(405, { 'Content-Type': 'text/plain' });
-    res.end('Method Not Allowed');
-  }
+    if (method !== 'POST') {
+      delete responseObj.body;
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(responseObj));
+  });
 });
 
-// Start the server on port 3000
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+module.exports = { server };
